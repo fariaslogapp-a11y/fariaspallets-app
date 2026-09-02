@@ -236,15 +236,6 @@ export default function ExitPage() {
       }
     }
 
-    if (currentBalance !== null && Number(formData.quantity) > currentBalance) {
-      addToast(
-        `Operação bloqueada! Saldo insuficiente (${currentBalance} disponíveis). Não é permitido saldo negativo.`,
-        'error',
-        6000
-      );
-      return;
-    }
-
     setSaving(true);
     try {
       const movementData = {
@@ -402,25 +393,25 @@ export default function ExitPage() {
           </div>
         </div>
         <div className="card-body">
-          {currentBalance !== null && currentBalance <= 0 && (
+          {currentBalance !== null && currentBalance < 0 && (
             <div
               style={{
-                background: 'rgba(239, 68, 68, 0.1)',
-                border: '1px solid var(--danger-500)',
+                background: 'rgba(251, 191, 36, 0.1)',
+                border: '1px solid #f59e0b',
                 borderRadius: 'var(--radius-md)',
                 padding: '12px 16px',
                 marginBottom: '20px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
-                color: 'var(--danger-600)',
+                color: '#92400e',
                 fontSize: '0.875rem',
               }}
             >
               <ShieldAlert size={20} />
               <div>
-                <strong>Atenção:</strong> O saldo atual para este filtro é de <strong>{currentBalance} pallets</strong>.
-                Não é possível realizar saídas sem saldo disponível.
+                <strong>Atenção:</strong> O saldo atual para este filtro é de <strong>{currentBalance} pallets</strong> (negativo).
+                A operação será permitida mesmo com saldo negativo.
               </div>
             </div>
           )}
@@ -505,7 +496,6 @@ export default function ExitPage() {
                 <input
                   type="number"
                   min="1"
-                  max={currentBalance !== null ? currentBalance : undefined}
                   className="form-input"
                   placeholder="Ex: 50"
                   value={formData.quantity}
@@ -887,7 +877,7 @@ export default function ExitPage() {
               <button
                 type="submit"
                 className="btn btn-danger btn-lg"
-                disabled={saving || (currentBalance !== null && currentBalance <= 0)}
+                disabled={saving}
               >
                 <CheckCircle2 size={20} />
                 {saving ? 'Registrando...' : 'Confirmar Saída'}

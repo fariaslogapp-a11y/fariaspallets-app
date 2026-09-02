@@ -207,11 +207,6 @@ export default function TermosPage() {
       return;
     }
 
-    if (currentBalance !== null && Number(formData.quantity) > currentBalance) {
-      addToast(`Saldo insuficiente! Saldo disponível na indústria: ${currentBalance} pallets.`, 'error');
-      return;
-    }
-
     // Build details of selected documents for the second page summary
     let selectedDocsDetails = [];
     if (!useManualMode && selectedCount > 0) {

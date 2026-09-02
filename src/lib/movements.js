@@ -3,21 +3,6 @@ import { getDocuments, createDocument as createFirestoreDoc } from './firestore'
 // ============ Create Movement ============
 
 export async function createMovement(data) {
-  // Validate for saida (exit) - no negative balance
-  if (data.type === 'saida') {
-    const balance = await calculateBalance({
-      category: data.category,
-      industryId: data.industryId || null,
-      clientId: data.clientId || null,
-    });
-    
-    if (balance < data.quantity) {
-      throw new Error(
-        `Saldo insuficiente. Saldo disponível: ${balance} pallets. Tentativa de saída: ${data.quantity} pallets.`
-      );
-    }
-  }
-
   const movId = await createFirestoreDoc('movements', {
     ...data,
     quantity: Number(data.quantity),

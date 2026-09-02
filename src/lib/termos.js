@@ -1,5 +1,5 @@
 import { getDocuments, createDocument as createFirestoreDoc, updateDocument, getDocument, deleteDocument } from './firestore';
-import { createMovement, calculateBalance } from './movements';
+import { createMovement } from './movements';
 
 // ============ Create Termo ============
 
@@ -18,17 +18,6 @@ export async function createTermo(data) {
 
     // 2. If movement does not exist yet (generated from /termos), create it to abate balance
     if (!movementId) {
-      const currentBalance = await calculateBalance({
-        category: 'transferencia',
-        industryId: data.industryId || null,
-      });
-
-      if (currentBalance < qty) {
-        throw new Error(
-          `Saldo insuficiente para gerar o termo. Saldo disponível na indústria: ${currentBalance} pallets. Quantidade do termo: ${qty} pallets.`
-        );
-      }
-
       const docNumber = data.documentNumber
         ? data.documentNumber
         : `Termo Nº ${String(nextNumber).padStart(4, '0')}`;
