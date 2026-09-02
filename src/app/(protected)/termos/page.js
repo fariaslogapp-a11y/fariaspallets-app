@@ -342,13 +342,15 @@ export default function TermosPage() {
     {
       header: 'NF / Termos Devolvidos',
       accessorKey: 'documentNumber',
-      cell: (row) => (
-        row.documentNumber ? (
-          <span className="badge badge-primary" style={{ gap: '4px', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.documentNumber}>
-            <FileText size={12} /> {row.documentNumber}
+      cell: (row) => {
+        // Prefer originalDocumentNumbers (NFs reais baixadas) over documentNumber (Termo Nº XXXX)
+        const nfDisplay = row.originalDocumentNumbers || row.documentNumber;
+        return nfDisplay ? (
+          <span className="badge badge-primary" style={{ gap: '4px', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={nfDisplay}>
+            <FileText size={12} /> {nfDisplay}
           </span>
-        ) : '-'
-      ),
+        ) : '-';
+      },
     },
     {
       header: 'Motorista',
