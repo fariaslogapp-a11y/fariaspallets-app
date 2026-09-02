@@ -12,9 +12,15 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Initialize Firebase (prevent re-initialization)
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-const auth = getAuth(app);
-const db = getFirestore(app);
+// Lazy getters — only resolve at runtime, never during build
+export function getApp() {
+  return getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+}
 
-export { app, auth, db };
+export function getAuthInstance() {
+  return getAuth(getApp());
+}
+
+export function getDb() {
+  return getFirestore(getApp());
+}

@@ -42,6 +42,7 @@ export default function TermosPage() {
     industryId: '',
     motorista: '',
     lacre: '',
+    placa: '',
     documentNumber: '',
     devolvidos: false,
     naoDevolvidos: false,
@@ -183,6 +184,7 @@ export default function TermosPage() {
       industryId: '',
       motorista: '',
       lacre: '',
+      placa: '',
       documentNumber: '',
       devolvidos: false,
       naoDevolvidos: false,
@@ -230,6 +232,7 @@ export default function TermosPage() {
       const result = await createTermo({
         ...formData,
         quantity: Number(formData.quantity),
+        placa: formData.placa.trim() || '',
         selectedDocsDetails,
         createdBy: user.uid,
         createdByName: user.name || user.email,
@@ -331,6 +334,11 @@ export default function TermosPage() {
       header: 'Lacre',
       accessorKey: 'lacre',
       cell: (row) => row.lacre || '-',
+    },
+    {
+      header: 'Placa',
+      accessorKey: 'placa',
+      cell: (row) => row.placa || '-',
     },
     {
       header: 'Status',
@@ -625,6 +633,18 @@ export default function TermosPage() {
                 onChange={(e) => setFormData({ ...formData, lacre: e.target.value })}
               />
             </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Placa do Veículo (Opcional)</label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Ex: ABC-1234"
+              maxLength={8}
+              value={formData.placa}
+              onChange={(e) => setFormData({ ...formData, placa: e.target.value.toUpperCase() })}
+            />
           </div>
 
           <div className="form-actions" style={{ marginTop: '24px' }}>

@@ -1,9 +1,9 @@
-import { db } from './firebase';
+import { getDb } from './firebase';
 import { collection, addDoc, getDocs, query, where, orderBy, serverTimestamp } from 'firebase/firestore';
 
 export async function logAuditAction(action, userId, userName, details = {}) {
   try {
-    await addDoc(collection(db, 'audit_logs'), {
+    await addDoc(collection(getDb(), 'audit_logs'), {
       action, // 'create', 'update', 'delete'
       userId,
       userName,
@@ -27,7 +27,7 @@ export async function getAuditLogs(filters = {}) {
 
   constraints.push(orderBy('timestamp', 'desc'));
 
-  const q = query(collection(db, 'audit_logs'), ...constraints);
+  const q = query(collection(getDb(), 'audit_logs'), ...constraints);
   const snapshot = await getDocs(q);
 
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));

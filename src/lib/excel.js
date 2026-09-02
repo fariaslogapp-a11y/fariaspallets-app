@@ -46,6 +46,7 @@ export function formatMovementsForExcel(movements, industries, clients) {
       'Indústria': industry?.name || '-',
       'Nº NF / Termo': mov.documentNumber || '-',
       'Cliente': client?.name || '-',
+      'Placa': mov.placa || '-',
       'Observação': mov.notes || '-',
       'Usuário Responsável': mov.createdByName || '-',
       'Data Lançamento': createdAtStr,

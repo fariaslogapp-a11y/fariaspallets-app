@@ -33,6 +33,7 @@ export default function ExitPage() {
     industryId: '',
     clientId: '',
     documentNumber: '',
+    placa: '',
     notes: '',
   });
 
@@ -254,6 +255,7 @@ export default function ExitPage() {
         industryId: formData.industryId || null,
         clientId: formData.category === 'transferencia' ? null : (formData.clientId || null),
         documentNumber: isDocumentControl ? formData.documentNumber.trim() : (formData.documentNumber.trim() || null),
+        placa: formData.placa.trim() || '',
         notes: formData.notes.trim() || '',
         createdBy: user.uid,
         createdByName: user.name || user.email,
@@ -293,6 +295,7 @@ export default function ExitPage() {
           industryId: formData.industryId,
           industryName: selectedIndustryObj?.name || '',
           documentNumber: isDocumentControl ? formData.documentNumber.trim() : (formData.documentNumber.trim() || null),
+          placa: formData.placa.trim() || '',
           selectedDocsDetails,
         });
         setTermoExtraForm({
@@ -310,6 +313,7 @@ export default function ExitPage() {
         industryId: '',
         clientId: '',
         documentNumber: '',
+        placa: '',
         notes: '',
       });
       setCurrentBalance(null);
@@ -336,6 +340,7 @@ export default function ExitPage() {
         quantity: termoModalData.quantity,
         industryId: termoModalData.industryId,
         documentNumber: termoModalData.documentNumber,
+        placa: termoModalData.placa || '',
         selectedDocsDetails: termoModalData.selectedDocsDetails || [],
         motorista: termoExtraForm.motorista,
         lacre: termoExtraForm.lacre,
@@ -854,6 +859,19 @@ export default function ExitPage() {
               </div>
             )}
 
+            {/* Placa */}
+            <div className="form-group">
+              <label className="form-label">Placa do Veículo (Opcional)</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Ex: ABC-1234"
+                maxLength={8}
+                value={formData.placa}
+                onChange={(e) => setFormData({ ...formData, placa: e.target.value.toUpperCase() })}
+              />
+            </div>
+
             {/* Observação */}
             <div className="form-group">
               <label className="form-label">Observação (Opcional)</label>
@@ -892,6 +910,9 @@ export default function ExitPage() {
                 <div><strong>Indústria:</strong> {termoModalData.industryName}</div>
                 <div><strong>Quantidade:</strong> <span style={{ color: 'var(--danger-600)', fontWeight: 'bold' }}>{termoModalData.quantity} Pallets</span></div>
                 <div><strong>Data:</strong> {termoModalData.date.split('-').reverse().join('/')}</div>
+                {termoModalData.placa && (
+                  <div><strong>Placa:</strong> {termoModalData.placa}</div>
+                )}
                 {termoModalData.documentNumber && (
                   <div><strong>NFs/Termos:</strong> {termoModalData.documentNumber}</div>
                 )}

@@ -95,6 +95,10 @@ export default function PrintTermoPage() {
             <span className="box-label">LACRE Nº</span>
             <span className="box-value">{termo.lacre || 'N/A'}</span>
           </div>
+          <div className="data-box">
+            <span className="box-label">PLACA</span>
+            <span className="box-value">{termo.placa || 'N/A'}</span>
+          </div>
         </div>
 
         <div className="status-section">
@@ -210,6 +214,9 @@ export default function PrintTermoPage() {
               </div>
               <div className="info-col">
                 <strong>Nº LACRE:</strong> {termo.lacre || 'N/A'}
+              </div>
+              <div className="info-col">
+                <strong>PLACA:</strong> {termo.placa || 'N/A'}
               </div>
               <div className="info-col">
                 <strong>TOTAL EXPEDIDO:</strong> <span style={{ color: '#1976d2', fontWeight: 800 }}>{termo.quantity} Pallets</span>

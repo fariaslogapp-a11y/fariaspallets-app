@@ -238,6 +238,11 @@ export default function QueriesPage() {
         ]
       : []),
     {
+      header: 'Placa',
+      accessorKey: 'placa',
+      cell: (row) => row.placa || '-',
+    },
+    {
       header: 'Observação',
       accessorKey: 'notes',
       cell: (row) => row.notes || '-',

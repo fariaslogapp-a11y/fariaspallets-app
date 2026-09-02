@@ -15,7 +15,7 @@ import {
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { getDb } from './firebase';
 
 // Helper for local storage backup
 function getLocalCollection(name) {
@@ -42,7 +42,7 @@ function setLocalCollection(name, items) {
 
 export async function createDocument(collectionName, data) {
   try {
-    const docRef = await addDoc(collection(db, collectionName), {
+    const docRef = await addDoc(collection(getDb(), collectionName), {
       ...data,
       createdAt: serverTimestamp(),
     });
@@ -72,7 +72,7 @@ export async function createDocument(collectionName, data) {
 
 export async function updateDocument(collectionName, docId, data) {
   try {
-    const docRef = doc(db, collectionName, docId);
+    const docRef = doc(getDb(), collectionName, docId);
     await updateDoc(docRef, {
       ...data,
       updatedAt: serverTimestamp(),
@@ -91,7 +91,7 @@ export async function updateDocument(collectionName, docId, data) {
 
 export async function deleteDocument(collectionName, docId) {
   try {
-    const docRef = doc(db, collectionName, docId);
+    const docRef = doc(getDb(), collectionName, docId);
     await deleteDoc(docRef);
   } catch (err) {
     console.error(`Erro ao excluir no Firestore (${collectionName}):`, err);
@@ -104,7 +104,7 @@ export async function deleteDocument(collectionName, docId) {
 
 export async function getDocument(collectionName, docId) {
   try {
-    const docRef = doc(db, collectionName, docId);
+    const docRef = doc(getDb(), collectionName, docId);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       return { id: docSnap.id, ...docSnap.data() };
@@ -119,7 +119,7 @@ export async function getDocument(collectionName, docId) {
 
 export async function getDocuments(collectionName, constraints = [], sortField = null, sortDir = 'asc') {
   try {
-    let q = collection(db, collectionName);
+    let q = collection(getDb(), collectionName);
     const queryConstraints = [...constraints];
     
     if (sortField) {
@@ -163,7 +163,7 @@ export async function getDocumentsPaginated(collectionName, constraints = [], so
 
 export function subscribeToCollection(collectionName, callback) {
   try {
-    const q = collection(db, collectionName);
+    const q = collection(getDb(), collectionName);
     return onSnapshot(
       q,
       (snapshot) => {

@@ -23,6 +23,7 @@ export default function EntryPage() {
     industryId: '',
     clientId: '',
     documentNumber: '',
+    placa: '',
     notes: '',
   });
 
@@ -101,6 +102,7 @@ export default function EntryPage() {
         industryId: formData.industryId || null,
         clientId: formData.category === 'transferencia' ? null : (formData.clientId || null),
         documentNumber: isDocumentControl ? formData.documentNumber.trim() : (formData.documentNumber.trim() || null),
+        placa: formData.placa.trim() || '',
         notes: formData.notes.trim() || '',
         createdBy: user.uid,
         createdByName: user.name || user.email,
@@ -123,6 +125,7 @@ export default function EntryPage() {
         industryId: '',
         clientId: '',
         documentNumber: '',
+        placa: '',
         notes: '',
       });
     } catch (err) {
@@ -314,6 +317,19 @@ export default function EntryPage() {
                 </p>
               </div>
             )}
+
+            {/* Placa */}
+            <div className="form-group">
+              <label className="form-label">Placa do Veículo (Opcional)</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Ex: ABC-1234"
+                maxLength={8}
+                value={formData.placa}
+                onChange={(e) => setFormData({ ...formData, placa: e.target.value.toUpperCase() })}
+              />
+            </div>
 
             {/* Observação */}
             <div className="form-group">
