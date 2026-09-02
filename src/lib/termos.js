@@ -41,39 +41,66 @@ export async function createTermo(data) {
       }
     }
 
-    // 3. Determine original NF numbers from selectedDocsDetails (used for movement matching)
+    // 3. Determine original NF numbers from selectedDocsDetails (used for display)
     const originalNfNumbers = (data.selectedDocsDetails && data.selectedDocsDetails.length > 0)
       ? data.selectedDocsDetails.map(d => d.documentNumber).join(', ')
       : null;
 
-    // 4. If movement does not exist yet (generated from /termos), create it to abate balance
-    //    Use the original NF numbers so getPendingDocuments can match & deduct correctly
+    // 4. If movement does not exist yet (generated from /termos), create movements to abate balance
+    //    Create ONE movement per NF so getPendingDocuments can match & deduct correctly
+    const termoNumber = `Termo Nº ${String(nextNumber).padStart(4, '0')}`;
+    const baseNotes = `Gerado via ${termoNumber}${data.motorista ? ` - Mot: ${data.motorista}` : ''}${data.lacre ? ` - Lacre: ${data.lacre}` : ''}`;
+    let movementIds = [];
+
     if (!movementId) {
-      const movementDocNumber = originalNfNumbers || data.documentNumber || `Termo Nº ${String(nextNumber).padStart(4, '0')}`;
+      if (data.selectedDocsDetails && data.selectedDocsDetails.length > 0) {
+        // Create one movement per NF with its specific quantity
+        for (const doc of data.selectedDocsDetails) {
+          const docQty = Number(doc.devolvidoAgora) || 0;
+          if (docQty <= 0) continue;
 
-      const movementData = {
-        type: 'saida',
-        category: 'transferencia',
-        quantity: qty,
-        date: data.date,
-        industryId: data.industryId,
-        clientId: null,
-        documentNumber: movementDocNumber,
-        notes: `Gerado via Termo Pallet Nº ${String(nextNumber).padStart(4, '0')}${data.motorista ? ` - Mot: ${data.motorista}` : ''}${data.lacre ? ` - Lacre: ${data.lacre}` : ''}`,
-        createdBy: data.createdBy,
-        createdByName: data.createdByName,
-      };
-
-      movementId = await createMovement(movementData);
+          const movId = await createMovement({
+            type: 'saida',
+            category: 'transferencia',
+            quantity: docQty,
+            date: data.date,
+            industryId: data.industryId,
+            clientId: null,
+            documentNumber: doc.documentNumber,
+            notes: `${baseNotes} — NF ${doc.documentNumber}`,
+            createdBy: data.createdBy,
+            createdByName: data.createdByName,
+          });
+          movementIds.push(movId);
+        }
+      } else {
+        // No NFs selected — single movement with termo number or manual docNumber
+        const fallbackDocNumber = data.documentNumber || termoNumber;
+        const movId = await createMovement({
+          type: 'saida',
+          category: 'transferencia',
+          quantity: qty,
+          date: data.date,
+          industryId: data.industryId,
+          clientId: null,
+          documentNumber: fallbackDocNumber,
+          notes: baseNotes,
+          createdBy: data.createdBy,
+          createdByName: data.createdByName,
+        });
+        movementIds.push(movId);
+      }
+    } else {
+      // Movement(s) already exist (created from /saida page)
+      movementIds = Array.isArray(movementId) ? movementId : [movementId];
     }
 
-    // 5. Create the termo document — always store the termo number as documentNumber
-    const termoNumber = `Termo Nº ${String(nextNumber).padStart(4, '0')}`;
+    // 5. Create the termo document
     const termoId = await createFirestoreDoc('termos', {
       ...data,
       quantity: qty,
       number: nextNumber,
-      movementId: movementId,
+      movementId: movementIds.length === 1 ? movementIds[0] : movementIds,
       documentNumber: termoNumber,
       originalDocumentNumbers: originalNfNumbers,
       status: 'ativo',
@@ -90,8 +117,11 @@ export async function cancelTermo(termoId) {
   try {
     const termo = await getDocument('termos', termoId);
     if (termo?.movementId) {
-      // Delete the movement to restore the balance
-      await deleteDocument('movements', termo.movementId);
+      // movementId can be a single string or an array (multiple NFs)
+      const ids = Array.isArray(termo.movementId) ? termo.movementId : [termo.movementId];
+      for (const id of ids) {
+        await deleteDocument('movements', id);
+      }
     }
     await updateDocument('termos', termoId, { status: 'cancelado' });
     return true;

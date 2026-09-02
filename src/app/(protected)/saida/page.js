@@ -268,33 +268,12 @@ export default function ExitPage() {
         }
       }
 
-      const movementData = {
-        type: 'saida',
-        category: formData.category,
-        quantity: Number(formData.quantity),
-        date: formData.date,
-        industryId: formData.industryId || null,
-        clientId: formData.category === 'transferencia' ? null : (formData.clientId || null),
-        documentNumber: isDocumentControl ? formData.documentNumber.trim() : (formData.documentNumber.trim() || null),
-        placa: formData.placa.trim() || '',
-        notes: formData.notes.trim() || '',
-        createdBy: user.uid,
-        createdByName: user.name || user.email,
-      };
-
-      const movId = await createMovement(movementData);
-
-      await logAuditAction('create', user.uid, user.name, {
-        collection: 'movements',
-        documentId: movId,
-        after: movementData,
-      });
-
-      addToast(`Saída de ${formData.quantity} pallets registrada com sucesso!`, 'success');
-
-      // Prepare selectedDocsDetails if any documents were selected
+      // Create movements: one per NF when document-controlled, otherwise a single movement
+      let movementIds = [];
       let selectedDocsDetails = [];
+
       if (isDocumentControl && !useManualDoc && selectedCount > 0) {
+        // Create one movement per NF with its specific quantity
         selectedDocsDetails = pendingDocs
           .filter((d) => (selectedDocs[d.documentNumber] || 0) > 0)
           .map((d) => ({
@@ -303,14 +282,64 @@ export default function ExitPage() {
             totalEntrada: d.totalEntrada,
             totalSaida: d.totalSaida,
             pendente: d.pendente,
-            devolvidoAgora: selectedDocs[d.documentNumber], // partial or full qty
+            devolvidoAgora: selectedDocs[d.documentNumber],
           }));
+
+        for (const doc of selectedDocsDetails) {
+          const docQty = Number(doc.devolvidoAgora) || 0;
+          if (docQty <= 0) continue;
+
+          const movData = {
+            type: 'saida',
+            category: formData.category,
+            quantity: docQty,
+            date: formData.date,
+            industryId: formData.industryId || null,
+            clientId: formData.category === 'transferencia' ? null : (formData.clientId || null),
+            documentNumber: doc.documentNumber,
+            placa: formData.placa.trim() || '',
+            notes: formData.notes.trim() || '',
+            createdBy: user.uid,
+            createdByName: user.name || user.email,
+          };
+          const movId = await createMovement(movData);
+          movementIds.push(movId);
+          await logAuditAction('create', user.uid, user.name, {
+            collection: 'movements',
+            documentId: movId,
+            after: movData,
+          });
+        }
+      } else {
+        // No NFs selected or manual mode: single movement
+        const movData = {
+          type: 'saida',
+          category: formData.category,
+          quantity: Number(formData.quantity),
+          date: formData.date,
+          industryId: formData.industryId || null,
+          clientId: formData.category === 'transferencia' ? null : (formData.clientId || null),
+          documentNumber: isDocumentControl ? formData.documentNumber.trim() : (formData.documentNumber.trim() || null),
+          placa: formData.placa.trim() || '',
+          notes: formData.notes.trim() || '',
+          createdBy: user.uid,
+          createdByName: user.name || user.email,
+        };
+        const movId = await createMovement(movData);
+        movementIds.push(movId);
+        await logAuditAction('create', user.uid, user.name, {
+          collection: 'movements',
+          documentId: movId,
+          after: movData,
+        });
       }
+
+      addToast(`Saída de ${formData.quantity} pallets registrada com sucesso!`, 'success');
 
       // If category is transferencia (industry exit), open popup to offer Termo Pallet generation
       if (formData.industryId) {
         setTermoModalData({
-          movementId: movId,
+          movementId: movementIds.length === 1 ? movementIds[0] : movementIds,
           date: formData.date,
           quantity: Number(formData.quantity),
           industryId: formData.industryId,
