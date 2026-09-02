@@ -41,11 +41,15 @@ export async function createTermo(data) {
       }
     }
 
-    // 3. If movement does not exist yet (generated from /termos), create it to abate balance
+    // 3. Determine original NF numbers from selectedDocsDetails (used for movement matching)
+    const originalNfNumbers = (data.selectedDocsDetails && data.selectedDocsDetails.length > 0)
+      ? data.selectedDocsDetails.map(d => d.documentNumber).join(', ')
+      : null;
+
+    // 4. If movement does not exist yet (generated from /termos), create it to abate balance
+    //    Use the original NF numbers so getPendingDocuments can match & deduct correctly
     if (!movementId) {
-      const docNumber = data.documentNumber
-        ? data.documentNumber
-        : `Termo Nº ${String(nextNumber).padStart(4, '0')}`;
+      const movementDocNumber = originalNfNumbers || data.documentNumber || `Termo Nº ${String(nextNumber).padStart(4, '0')}`;
 
       const movementData = {
         type: 'saida',
@@ -54,7 +58,7 @@ export async function createTermo(data) {
         date: data.date,
         industryId: data.industryId,
         clientId: null,
-        documentNumber: docNumber,
+        documentNumber: movementDocNumber,
         notes: `Gerado via Termo Pallet Nº ${String(nextNumber).padStart(4, '0')}${data.motorista ? ` - Mot: ${data.motorista}` : ''}${data.lacre ? ` - Lacre: ${data.lacre}` : ''}`,
         createdBy: data.createdBy,
         createdByName: data.createdByName,
@@ -63,17 +67,15 @@ export async function createTermo(data) {
       movementId = await createMovement(movementData);
     }
 
-    const docNumber = data.documentNumber
-      ? data.documentNumber
-      : `Termo Nº ${String(nextNumber).padStart(4, '0')}`;
-
-    // 3. Create the termo document
+    // 5. Create the termo document — always store the termo number as documentNumber
+    const termoNumber = `Termo Nº ${String(nextNumber).padStart(4, '0')}`;
     const termoId = await createFirestoreDoc('termos', {
       ...data,
       quantity: qty,
       number: nextNumber,
       movementId: movementId,
-      documentNumber: docNumber,
+      documentNumber: termoNumber,
+      originalDocumentNumbers: originalNfNumbers,
       status: 'ativo',
     });
 
