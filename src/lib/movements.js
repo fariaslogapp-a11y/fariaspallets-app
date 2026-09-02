@@ -204,6 +204,34 @@ export async function getMonthlyData() {
   }
 }
 
+// ============ Single Document Pending Balance ============
+
+export async function getDocumentPendingBalance(documentNumber, industryId, category = 'transferencia') {
+  try {
+    const movements = await getDocuments('movements');
+
+    let totalEntrada = 0;
+    let totalSaida = 0;
+
+    movements.forEach((m) => {
+      if (m.industryId !== industryId) return;
+      if (m.category !== category) return;
+      if (!m.documentNumber || m.documentNumber.trim() !== documentNumber.trim()) return;
+
+      if (m.type === 'entrada') {
+        totalEntrada += Number(m.quantity);
+      } else if (m.type === 'saida') {
+        totalSaida += Number(m.quantity);
+      }
+    });
+
+    return totalEntrada - totalSaida;
+  } catch (err) {
+    console.warn('Erro ao buscar saldo do documento:', err?.message || err);
+    return 0;
+  }
+}
+
 // ============ Pending Documents (NF/Termo) ============
 
 export async function getPendingDocuments(industryId, category = 'transferencia') {

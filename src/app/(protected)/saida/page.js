@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getDocuments } from '@/lib/firestore';
-import { createMovement, calculateBalance, getPendingDocuments } from '@/lib/movements';
+import { createMovement, calculateBalance, getPendingDocuments, getDocumentPendingBalance } from '@/lib/movements';
 import { createTermo } from '@/lib/termos';
 import { logAuditAction } from '@/lib/audit';
 import { useAuth } from '@/contexts/AuthContext';
@@ -238,6 +238,36 @@ export default function ExitPage() {
 
     setSaving(true);
     try {
+      // Server-side validation: check pending balance for selected documents
+      if (isDocumentControl && !useManualDoc && selectedCount > 0) {
+        for (const doc of pendingDocs.filter((d) => (selectedDocs[d.documentNumber] || 0) > 0)) {
+          const pendingBalance = await getDocumentPendingBalance(
+            doc.documentNumber,
+            formData.industryId,
+            formData.category
+          );
+          const requestedQty = selectedDocs[doc.documentNumber] || 0;
+
+          if (pendingBalance <= 0) {
+            addToast(
+              `O documento ${doc.documentNumber} já foi totalmente baixado (saldo: ${pendingBalance}). Remova-o da seleção.`,
+              'error'
+            );
+            setSaving(false);
+            return;
+          }
+
+          if (requestedQty > pendingBalance) {
+            addToast(
+              `O documento ${doc.documentNumber} possui saldo disponível de ${pendingBalance} pallets, mas está sendo solicitado ${requestedQty}. Ajuste a quantidade.`,
+              'error'
+            );
+            setSaving(false);
+            return;
+          }
+        }
+      }
+
       const movementData = {
         type: 'saida',
         category: formData.category,

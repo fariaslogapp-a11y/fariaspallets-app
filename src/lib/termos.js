@@ -1,5 +1,5 @@
 import { getDocuments, createDocument as createFirestoreDoc, updateDocument, getDocument, deleteDocument } from './firestore';
-import { createMovement } from './movements';
+import { createMovement, getDocumentPendingBalance } from './movements';
 
 // ============ Create Termo ============
 
@@ -16,7 +16,32 @@ export async function createTermo(data) {
     const qty = Number(data.quantity);
     let movementId = data.movementId || null;
 
-    // 2. If movement does not exist yet (generated from /termos), create it to abate balance
+    // 2. Validate pending balance for selected documents (when creating from /termos page)
+    //    Skip validation when movementId is provided (created from /saida page, already validated there)
+    if (!movementId && data.selectedDocsDetails && data.selectedDocsDetails.length > 0) {
+      for (const doc of data.selectedDocsDetails) {
+        const pendingBalance = await getDocumentPendingBalance(
+          doc.documentNumber,
+          data.industryId,
+          'transferencia'
+        );
+        const requestedQty = Number(doc.devolvidoAgora) || 0;
+
+        if (pendingBalance <= 0) {
+          throw new Error(
+            `O documento ${doc.documentNumber} já foi totalmente baixado (saldo: ${pendingBalance}). Não é possível gerar um termo para este documento.`
+          );
+        }
+
+        if (requestedQty > pendingBalance) {
+          throw new Error(
+            `O documento ${doc.documentNumber} possui saldo disponível de ${pendingBalance} pallets, mas está sendo solicitado ${requestedQty}. Ajuste a quantidade para o saldo restante.`
+          );
+        }
+      }
+    }
+
+    // 3. If movement does not exist yet (generated from /termos), create it to abate balance
     if (!movementId) {
       const docNumber = data.documentNumber
         ? data.documentNumber

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getDocuments } from '@/lib/firestore';
 import { createTermo, cancelTermo } from '@/lib/termos';
-import { getPendingDocuments, calculateBalance } from '@/lib/movements';
+import { getPendingDocuments, calculateBalance, getDocumentPendingBalance } from '@/lib/movements';
 import { logAuditAction } from '@/lib/audit';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -224,6 +224,36 @@ export default function TermosPage() {
 
     setSaving(true);
     try {
+      // Server-side validation: check pending balance for selected documents before creating termo
+      if (!useManualMode && selectedDocsDetails.length > 0) {
+        for (const doc of selectedDocsDetails) {
+          const pendingBalance = await getDocumentPendingBalance(
+            doc.documentNumber,
+            formData.industryId,
+            'transferencia'
+          );
+          const requestedQty = doc.devolvidoAgora || 0;
+
+          if (pendingBalance <= 0) {
+            addToast(
+              `O documento ${doc.documentNumber} já foi totalmente baixado (saldo: ${pendingBalance}). Remova-o da seleção.`,
+              'error'
+            );
+            setSaving(false);
+            return;
+          }
+
+          if (requestedQty > pendingBalance) {
+            addToast(
+              `O documento ${doc.documentNumber} possui saldo disponível de ${pendingBalance} pallets, mas está sendo solicitado ${requestedQty}. Ajuste a quantidade.`,
+              'error'
+            );
+            setSaving(false);
+            return;
+          }
+        }
+      }
+
       const result = await createTermo({
         ...formData,
         quantity: Number(formData.quantity),
