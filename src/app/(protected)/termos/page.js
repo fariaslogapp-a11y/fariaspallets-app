@@ -546,8 +546,19 @@ export default function TermosPage() {
                               <Square size={16} color="var(--text-muted)" />
                             )}
                           </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Entrada: {formattedEntradaDate}</span>
+                            {doc.totalSaida > 0 ? (
+                              <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: 'rgba(251, 191, 36, 0.15)', color: '#92400e', border: '1px solid rgba(251, 191, 36, 0.3)' }}>
+                                Parcial: {doc.pendente}/{doc.totalEntrada}
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: 'rgba(34, 197, 94, 0.12)', color: '#166534', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
+                                Total: {doc.pendente}
+                              </span>
+                            )}
+                          </div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span>Entrada: {formattedEntradaDate}</span>
                             {isSelected ? (
                               <span onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 <span style={{ fontWeight: 600, color: 'var(--primary-600)' }}>Baixando:</span>
@@ -574,8 +585,8 @@ export default function TermosPage() {
                                 <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>/{doc.pendente}</span>
                               </span>
                             ) : (
-                              <span style={{ fontWeight: 600, color: 'var(--danger-600)' }}>
-                                Pendente: {doc.pendente}
+                              <span style={{ fontWeight: 600, color: doc.totalSaida > 0 ? '#b45309' : 'var(--danger-600)' }}>
+                                Disponível: {doc.pendente}{doc.totalSaida > 0 ? ` de ${doc.totalEntrada}` : ''}
                               </span>
                             )}
                           </div>

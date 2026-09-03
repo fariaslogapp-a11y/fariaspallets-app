@@ -778,9 +778,20 @@ export default function ExitPage() {
                                 {/* Document info */}
                                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                                   <div style={{ flex: '1 1 140px' }}>
-                                    <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
-                                      <FileText size={14} style={{ marginRight: '4px', verticalAlign: 'text-bottom' }} />
-                                      {doc.documentNumber}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                      <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+                                        <FileText size={14} style={{ marginRight: '4px', verticalAlign: 'text-bottom' }} />
+                                        {doc.documentNumber}
+                                      </span>
+                                      {doc.totalSaida > 0 ? (
+                                        <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: 'rgba(251, 191, 36, 0.15)', color: '#92400e', border: '1px solid rgba(251, 191, 36, 0.3)' }}>
+                                          Parcial: {doc.pendente}/{doc.totalEntrada}
+                                        </span>
+                                      ) : (
+                                        <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: 'rgba(34, 197, 94, 0.12)', color: '#166534', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
+                                          Total: {doc.pendente}
+                                        </span>
+                                      )}
                                     </div>
                                     {doc.entradaDate && (
                                       <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
