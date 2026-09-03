@@ -7,7 +7,7 @@ import { getPendingDocuments, calculateBalance, getDocumentPendingBalance } from
 import { logAuditAction } from '@/lib/audit';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { canDelete } from '@/lib/permissions';
+import { canCancelTermos } from '@/lib/permissions';
 import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -438,7 +438,7 @@ export default function TermosPage() {
             >
               <Printer size={16} />
             </button>
-            {canDelete(user) && row.status !== 'cancelado' && (
+            {canCancelTermos(user) && row.status !== 'cancelado' && (
               <button
                 className="btn-delete"
                 onClick={() => setConfirmCancel({ open: true, id: row.id })}

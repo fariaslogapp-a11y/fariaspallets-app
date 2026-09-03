@@ -18,6 +18,10 @@ export function canDelete(user) {
   return user?.role === 'admin';
 }
 
+export function canCancelTermos(user) {
+  return user?.role === 'admin' || user?.role === 'operator';
+}
+
 export function canManageUsers(user) {
   return user?.role === 'admin';
 }
