@@ -19,6 +19,9 @@ import {
   Repeat,
   Users,
   FileText,
+  Truck,
+  BarChart3,
+  List,
 } from 'lucide-react';
 
 export default function QueriesPage() {
@@ -31,6 +34,9 @@ export default function QueriesPage() {
 
   // Active Category View: 'transferencia' | 'cliente'
   const [activeCategory, setActiveCategory] = useState('transferencia');
+
+  // Sub-view for transferencias: 'movements' | 'distributors'
+  const [transfSubView, setTransfSubView] = useState('movements');
 
   // Filters for TRANSFERÊNCIAS: industryId, documentNumber, dateStart, dateEnd
   const [transfFilters, setTransfFilters] = useState({
@@ -134,6 +140,32 @@ export default function QueriesPage() {
 
   const getIndustryName = (id) => industries.find((i) => i.id === id)?.name || '-';
   const getClientName = (id) => clients.find((c) => c.id === id)?.name || '-';
+
+  // Build distributor summary grouped by industry
+  const distributorSummary = (() => {
+    const summary = {};
+    transfMovements.forEach((m) => {
+      if (!m.distribuidor) return;
+      const key = `${m.industryId}|||${m.distribuidor}`;
+      if (!summary[key]) {
+        summary[key] = {
+          industryId: m.industryId,
+          industryName: getIndustryName(m.industryId),
+          distribuidor: m.distribuidor,
+          entradas: 0,
+          saidas: 0,
+        };
+      }
+      const qty = Number(m.quantity);
+      if (m.type === 'entrada') summary[key].entradas += qty;
+      else summary[key].saidas += qty;
+    });
+    return Object.values(summary).sort((a, b) => {
+      const indCmp = a.industryName.localeCompare(b.industryName);
+      if (indCmp !== 0) return indCmp;
+      return a.distribuidor.localeCompare(b.distribuidor);
+    });
+  })();
 
   const handleDelete = async () => {
     if (!confirmDelete.id) return;
@@ -397,25 +429,140 @@ export default function QueriesPage() {
             </div>
           </div>
 
-          <DataTable
-            columns={columns}
-            data={transfMovements}
-            searchPlaceholder="Busca rápida por qualquer campo ou número de termo..."
-            loading={loading}
-            actions={(row) => (
-              <>
-                {canDelete(user) && (
-                  <button
-                    className="btn-delete"
-                    onClick={() => setConfirmDelete({ open: true, id: row.id })}
-                    title="Excluir Lançamento"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                )}
-              </>
-            )}
-          />
+          {/* Sub-toggle: Movimentações vs Resumo por Distribuidor */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+            <button
+              className={`btn ${transfSubView === 'movements' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', padding: '8px 14px' }}
+              onClick={() => setTransfSubView('movements')}
+            >
+              <List size={16} /> Lançamentos
+            </button>
+            <button
+              className={`btn ${transfSubView === 'distributors' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', padding: '8px 14px' }}
+              onClick={() => setTransfSubView('distributors')}
+            >
+              <Truck size={16} /> Resumo por Distribuidor
+            </button>
+          </div>
+
+          {transfSubView === 'movements' ? (
+            <DataTable
+              columns={columns}
+              data={transfMovements}
+              searchPlaceholder="Busca rápida por qualquer campo ou número de termo..."
+              loading={loading}
+              actions={(row) => (
+                <>
+                  {canDelete(user) && (
+                    <button
+                      className="btn-delete"
+                      onClick={() => setConfirmDelete({ open: true, id: row.id })}
+                      title="Excluir Lançamento"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </>
+              )}
+            />
+          ) : (
+            /* Resumo por Distribuidor */
+            <div>
+              {distributorSummary.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-secondary)', border: '1px dashed var(--border-light)', borderRadius: 'var(--radius-md)' }}>
+                  <Truck size={36} style={{ marginBottom: '10px', opacity: 0.4 }} />
+                  <p style={{ margin: 0, fontSize: '0.95rem' }}>Nenhuma movimentação com distribuidor encontrada.</p>
+                  <p style={{ margin: '4px 0 0', fontSize: '0.82rem', opacity: 0.7 }}>
+                    Cadastre indústrias do tipo CD e registre saídas/termos selecionando distribuidores.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* Group by industry */}
+                  {(() => {
+                    const industryGroups = {};
+                    distributorSummary.forEach((item) => {
+                      if (!industryGroups[item.industryId]) {
+                        industryGroups[item.industryId] = {
+                          industryName: item.industryName,
+                          distribuidores: [],
+                        };
+                      }
+                      industryGroups[item.industryId].distribuidores.push(item);
+                    });
+
+                    return Object.entries(industryGroups).map(([indId, group]) => {
+                      const totalEntradas = group.distribuidores.reduce((s, d) => s + d.entradas, 0);
+                      const totalSaidas = group.distribuidores.reduce((s, d) => s + d.saidas, 0);
+                      const saldoIndustria = totalEntradas - totalSaidas;
+
+                      return (
+                        <div key={indId} style={{ marginBottom: '20px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+                          {/* Industry header */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '0.95rem' }}>
+                              <Truck size={18} color="var(--warning-500, #f59e0b)" />
+                              {group.industryName}
+                            </div>
+                            <div style={{ display: 'flex', gap: '16px', fontSize: '0.85rem', fontWeight: 600 }}>
+                              <span>Entradas: <span style={{ color: 'var(--success-600)' }}>+{totalEntradas}</span></span>
+                              <span>Saídas: <span style={{ color: 'var(--danger-600)' }}>-{totalSaidas}</span></span>
+                              <span>Saldo: <span style={{ color: saldoIndustria >= 0 ? 'var(--primary-600)' : 'var(--danger-600)' }}>{saldoIndustria}</span></span>
+                            </div>
+                          </div>
+
+                          {/* Column headers */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 100px 100px', alignItems: 'center', padding: '6px 16px', background: 'var(--bg-hover)', borderBottom: '1px solid var(--border-color)', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            <span>Distribuidor</span>
+                            <span style={{ textAlign: 'center' }}>Entradas</span>
+                            <span style={{ textAlign: 'center' }}>Saídas</span>
+                            <span style={{ textAlign: 'center' }}>Saldo</span>
+                          </div>
+
+                          {/* Distributor rows */}
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            {group.distribuidores.map((dist, idx) => {
+                              const saldo = dist.entradas - dist.saidas;
+                              return (
+                                <div
+                                  key={idx}
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: '1fr 100px 100px 100px',
+                                    alignItems: 'center',
+                                    padding: '10px 16px',
+                                    borderBottom: idx < group.distribuidores.length - 1 ? '1px solid var(--border-light)' : 'none',
+                                    fontSize: '0.88rem',
+                                    background: 'var(--bg-primary)',
+                                  }}
+                                >
+                                  <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: saldo > 0 ? 'var(--success-500)' : saldo < 0 ? 'var(--danger-500)' : 'var(--text-muted)', flexShrink: 0 }} />
+                                    {dist.distribuidor}
+                                  </div>
+                                  <div style={{ textAlign: 'center' }}>
+                                    <span style={{ color: 'var(--success-600)', fontWeight: 700 }}>+{dist.entradas}</span>
+                                  </div>
+                                  <div style={{ textAlign: 'center' }}>
+                                    <span style={{ color: 'var(--danger-600)', fontWeight: 700 }}>-{dist.saidas}</span>
+                                  </div>
+                                  <div style={{ textAlign: 'center', fontWeight: 800, color: saldo >= 0 ? 'var(--primary-600)' : 'var(--danger-600)' }}>
+                                    {saldo}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </>
+              )}
+            </div>
+          )}
         </>
       )}
 
