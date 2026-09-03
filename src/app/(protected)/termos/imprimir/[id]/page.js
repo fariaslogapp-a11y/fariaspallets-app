@@ -127,7 +127,7 @@ export default function PrintTermoPage() {
           <div className="signature-block">
             <div className="info-row">
               <span className="label">DISTRIBUIDOR / CLIENTE:</span>
-              <span className="value">{industryName || '_____________________________________________'}</span>
+              <span className="value">{termo.distribuidor || industryName || '_____________________________________________'}</span>
             </div>
             <div className="sign-line">
               <div className="line"></div>
@@ -207,7 +207,7 @@ export default function PrintTermoPage() {
             {/* Info Box */}
             <div className="summary-info-card">
               <div className="info-col">
-                <strong>DISTRIBUIDOR / INDÚSTRIA:</strong> {industryName || '-'}
+                <strong>DISTRIBUIDOR / INDÚSTRIA:</strong> {termo.distribuidor || industryName || '-'}
               </div>
               <div className="info-col">
                 <strong>MOTORISTA:</strong> {termo.motorista || 'Não informado'}
@@ -296,7 +296,7 @@ export default function PrintTermoPage() {
 
               <div className="sig-item">
                 <div className="sig-line-bar"></div>
-                <span className="sig-name">{industryName || 'RESPONSÁVEL / DISTRIBUIDOR'}</span>
+                <span className="sig-name">{termo.distribuidor || industryName || 'RESPONSÁVEL / DISTRIBUIDOR'}</span>
                 <span className="sig-role">Recebido e De Acordo</span>
               </div>
             </div>

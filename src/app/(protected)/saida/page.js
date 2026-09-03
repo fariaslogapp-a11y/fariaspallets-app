@@ -8,7 +8,7 @@ import { logAuditAction } from '@/lib/audit';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import Modal from '@/components/ui/Modal';
-import { ArrowUpFromLine, CheckCircle2, ShieldAlert, FileText, Package, Check, Loader2, Printer } from 'lucide-react';
+import { ArrowUpFromLine, CheckCircle2, ShieldAlert, FileText, Package, Check, Loader2, Printer, Truck } from 'lucide-react';
 
 export default function ExitPage() {
   const [industries, setIndustries] = useState([]);
@@ -35,6 +35,7 @@ export default function ExitPage() {
     documentNumber: '',
     placa: '',
     notes: '',
+    distribuidor: '',
   });
 
   // Termo Pallet Popup state
@@ -71,6 +72,7 @@ export default function ExitPage() {
 
   const selectedIndustryObj = industries.find((i) => i.id === formData.industryId);
   const isDocumentControl = selectedIndustryObj?.controlType === 'document';
+  const isCD = selectedIndustryObj?.controlType === 'cd';
 
   // Fetch pending documents when industry changes and is document-controlled
   useEffect(() => {
@@ -158,6 +160,7 @@ export default function ExitPage() {
       clientId: '',
       documentNumber: '',
       quantity: '',
+      distribuidor: '',
     }));
     setCurrentBalance(null);
     setPendingDocs([]);
@@ -222,6 +225,12 @@ export default function ExitPage() {
         addToast('Cliente é obrigatório para Operação de Clientes', 'warning');
         return;
       }
+    }
+
+    // Regra de CD: distribuidor obrigatório
+    if (isCD && selectedIndustryObj?.distribuidores && selectedIndustryObj.distribuidores.length > 0 && !formData.distribuidor) {
+      addToast('Selecione um Distribuidor para esta indústria (CD)', 'warning');
+      return;
     }
 
     // Regra de controle por Documento / Termo
@@ -297,6 +306,7 @@ export default function ExitPage() {
             industryId: formData.industryId || null,
             clientId: formData.category === 'transferencia' ? null : (formData.clientId || null),
             documentNumber: doc.documentNumber,
+            distribuidor: isCD ? (formData.distribuidor || null) : null,
             placa: formData.placa.trim() || '',
             notes: formData.notes.trim() || '',
             createdBy: user.uid,
@@ -320,6 +330,7 @@ export default function ExitPage() {
           industryId: formData.industryId || null,
           clientId: formData.category === 'transferencia' ? null : (formData.clientId || null),
           documentNumber: isDocumentControl ? formData.documentNumber.trim() : (formData.documentNumber.trim() || null),
+          distribuidor: isCD ? (formData.distribuidor || null) : null,
           placa: formData.placa.trim() || '',
           notes: formData.notes.trim() || '',
           createdBy: user.uid,
@@ -345,6 +356,7 @@ export default function ExitPage() {
           industryId: formData.industryId,
           industryName: selectedIndustryObj?.name || '',
           documentNumber: isDocumentControl ? formData.documentNumber.trim() : (formData.documentNumber.trim() || null),
+          distribuidor: isCD ? (formData.distribuidor || '') : '',
           placa: formData.placa.trim() || '',
           selectedDocsDetails,
         });
@@ -390,6 +402,7 @@ export default function ExitPage() {
         quantity: termoModalData.quantity,
         industryId: termoModalData.industryId,
         documentNumber: termoModalData.documentNumber,
+        distribuidor: termoModalData.distribuidor || '',
         placa: termoModalData.placa || '',
         selectedDocsDetails: termoModalData.selectedDocsDetails || [],
         motorista: termoExtraForm.motorista,
@@ -919,6 +932,29 @@ export default function ExitPage() {
               </div>
             )}
 
+            {/* Distribuidor (apenas para CD) */}
+            {isCD && selectedIndustryObj?.distribuidores && selectedIndustryObj.distribuidores.length > 0 && (
+              <div className="form-group animate-in">
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Truck size={16} color="var(--warning-500, #f59e0b)" />
+                  Distribuidor <span className="form-required">*</span>
+                </label>
+                <select
+                  className="form-select"
+                  value={formData.distribuidor}
+                  onChange={(e) => setFormData({ ...formData, distribuidor: e.target.value })}
+                  required
+                >
+                  <option value="">Selecione o Distribuidor...</option>
+                  {selectedIndustryObj.distribuidores.map((dist, idx) => (
+                    <option key={idx} value={dist.name}>
+                      {dist.name}{dist.city ? ` (${dist.city})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Placa */}
             <div className="form-group">
               <label className="form-label">Placa do Veículo (Opcional)</label>
@@ -968,6 +1004,9 @@ export default function ExitPage() {
             <div style={{ background: 'var(--bg-secondary)', padding: '14px', borderRadius: '8px', marginBottom: '18px', border: '1px solid var(--border-color)' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.85rem' }}>
                 <div><strong>Indústria:</strong> {termoModalData.industryName}</div>
+                {termoModalData.distribuidor && (
+                  <div><strong>Distribuidor:</strong> <span style={{ color: 'var(--warning-600, #b45309)', fontWeight: 'bold' }}>{termoModalData.distribuidor}</span></div>
+                )}
                 <div><strong>Quantidade:</strong> <span style={{ color: 'var(--danger-600)', fontWeight: 'bold' }}>{termoModalData.quantity} Pallets</span></div>
                 <div><strong>Data:</strong> {termoModalData.date.split('-').reverse().join('/')}</div>
                 {termoModalData.placa && (

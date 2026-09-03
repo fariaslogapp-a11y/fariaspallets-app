@@ -9,7 +9,7 @@ import { isAdmin, canDelete, canCreateEditCadastros } from '@/lib/permissions';
 import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
-import { Plus, Edit, Trash2, Factory, CheckCircle, XCircle, FileText, Layers } from 'lucide-react';
+import { Plus, Edit, Trash2, Factory, CheckCircle, XCircle, FileText, Layers, Truck, X } from 'lucide-react';
 
 export default function IndustriesPage() {
   const [industries, setIndustries] = useState([]);
@@ -23,9 +23,11 @@ export default function IndustriesPage() {
     name: '',
     cnpj: '',
     city: '',
-    controlType: 'volume', // 'volume' | 'document'
+    controlType: 'volume', // 'volume' | 'document' | 'cd'
     active: true,
+    distribuidores: [],
   });
+  const [novoDistribuidor, setNovoDistribuidor] = useState({ name: '', city: '' });
 
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -48,7 +50,8 @@ export default function IndustriesPage() {
 
   const openCreateModal = () => {
     setSelectedIndustry(null);
-    setFormData({ name: '', cnpj: '', city: '', controlType: 'volume', active: true });
+    setFormData({ name: '', cnpj: '', city: '', controlType: 'volume', active: true, distribuidores: [] });
+    setNovoDistribuidor({ name: '', city: '' });
     setIsModalOpen(true);
   };
 
@@ -60,7 +63,9 @@ export default function IndustriesPage() {
       city: industry.city || '',
       controlType: industry.controlType || 'volume',
       active: industry.active ?? true,
+      distribuidores: industry.distribuidores || [],
     });
+    setNovoDistribuidor({ name: '', city: '' });
     setIsModalOpen(true);
   };
 
@@ -133,15 +138,17 @@ export default function IndustriesPage() {
           {row.name}
         </div>
       ),
-    },
-    {
-      header: 'Tipo de Controle',
+    },      {header: 'Tipo de Controle',
       accessorKey: 'controlType',
       cell: (row) => (
-        <span className={`badge ${row.controlType === 'document' ? 'badge-primary' : 'badge-neutral'}`}>
+        <span className={`badge ${row.controlType === 'document' ? 'badge-primary' : row.controlType === 'cd' ? 'badge-warning' : 'badge-neutral'}`}>
           {row.controlType === 'document' ? (
             <>
               <FileText size={12} /> Nota Fiscal / Termo
+            </>
+          ) : row.controlType === 'cd' ? (
+            <>
+              <Truck size={12} /> CD (Distribuidores)
             </>
           ) : (
             <>
@@ -150,6 +157,18 @@ export default function IndustriesPage() {
           )}
         </span>
       ),
+    },
+    {
+      header: 'Distribuidores',
+      accessorKey: 'distribuidores',
+      cell: (row) => {
+        if (row.controlType !== 'cd' || !row.distribuidores || row.distribuidores.length === 0) return '-';
+        return (
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+            {row.distribuidores.length} distribuidor(es)
+          </span>
+        );
+      },
     },
     { header: 'CNPJ', accessorKey: 'cnpj', cell: (row) => row.cnpj || '-' },
     { header: 'Cidade', accessorKey: 'city', cell: (row) => row.city || '-' },
@@ -287,10 +306,37 @@ export default function IndustriesPage() {
                 />
                 NF ou Termo Pallets
               </label>
+
+              <label
+                style={{
+                  flex: 1,
+                  padding: '12px 14px',
+                  borderRadius: 'var(--radius-md)',
+                  border: `2px solid ${formData.controlType === 'cd' ? 'var(--warning-500, #f59e0b)' : 'var(--border-light)'}`,
+                  background: formData.controlType === 'cd' ? 'rgba(245, 158, 11, 0.08)' : 'var(--bg-input)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                }}
+              >
+                <input
+                  type="radio"
+                  name="controlType"
+                  value="cd"
+                  checked={formData.controlType === 'cd'}
+                  onChange={(e) => setFormData({ ...formData, controlType: e.target.value })}
+                />
+                <Truck size={16} /> CD (Distribuidores)
+              </label>
             </div>
             <p className="form-hint" style={{ marginTop: '6px' }}>
               {formData.controlType === 'document'
                 ? 'Exigirá obrigatoriamente o número da Nota Fiscal ou Termo nos lançamentos de entrada e devoluções.'
+                : formData.controlType === 'cd'
+                ? 'Centro de Distribuição — permitirá cadastrar distribuidores e selecioná-los ao gerar termos/saídas.'
                 : 'Controle simples por quantidade acumulada de pallets.'}
             </p>
           </div>
@@ -316,6 +362,87 @@ export default function IndustriesPage() {
               onChange={(e) => setFormData({ ...formData, city: e.target.value })}
             />
           </div>
+
+          {/* Distribuidores (apenas para CD) */}
+          {formData.controlType === 'cd' && (
+            <div className="form-group" style={{ background: 'var(--bg-secondary)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+                <Truck size={16} color="var(--warning-500, #f59e0b)" />
+                Distribuidores Cadastrados
+              </label>
+
+              {formData.distribuidores.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
+                  {formData.distribuidores.map((dist, idx) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--bg-primary)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                      <div>
+                        <strong style={{ fontSize: '0.85rem' }}>{dist.name}</strong>
+                        {dist.city && <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginLeft: '8px' }}>({dist.city})</span>}
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-delete"
+                        onClick={() => {
+                          const newDist = formData.distribuidores.filter((_, i) => i !== idx);
+                          setFormData({ ...formData, distribuidores: newDist });
+                        }}
+                        title="Remover distribuidor"
+                        style={{ padding: '2px', background: 'none', border: 'none' }}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+                <div style={{ flex: 2 }}>
+                  <label className="form-label" style={{ fontSize: '0.78rem', marginBottom: '2px' }}>Nome *</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Nome do distribuidor"
+                    value={novoDistribuidor.name}
+                    onChange={(e) => setNovoDistribuidor({ ...novoDistribuidor, name: e.target.value })}
+                    style={{ fontSize: '0.85rem' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="form-label" style={{ fontSize: '0.78rem', marginBottom: '2px' }}>Cidade</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Cidade"
+                    value={novoDistribuidor.city}
+                    onChange={(e) => setNovoDistribuidor({ ...novoDistribuidor, city: e.target.value })}
+                    style={{ fontSize: '0.85rem' }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => {
+                    if (!novoDistribuidor.name.trim()) {
+                      addToast('Nome do distribuidor é obrigatório', 'warning');
+                      return;
+                    }
+                    setFormData({
+                      ...formData,
+                      distribuidores: [...formData.distribuidores, { name: novoDistribuidor.name.trim(), city: novoDistribuidor.city.trim() }],
+                    });
+                    setNovoDistribuidor({ name: '', city: '' });
+                  }}
+                  style={{ padding: '8px 12px', fontSize: '0.85rem' }}
+                >
+                  <Plus size={14} /> Adicionar
+                </button>
+              </div>
+              <p className="form-hint" style={{ marginTop: '6px' }}>
+                Cadastre os distribuidores que esta indústria (CD) abastece. Eles aparecerão na hora de gerar termos/saídas.
+              </p>
+            </div>
+          )}
 
           <div className="form-group">
             <label className="form-label">Status</label>

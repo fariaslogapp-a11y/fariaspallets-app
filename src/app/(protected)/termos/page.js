@@ -11,7 +11,7 @@ import { canDelete } from '@/lib/permissions';
 import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
-import { Plus, Printer, Trash2, FileText, XCircle, CheckSquare, Square, AlertCircle, RefreshCw, ArrowUpDown, ArrowDown, ArrowUp } from 'lucide-react';
+import { Plus, Printer, Trash2, FileText, XCircle, CheckSquare, Square, AlertCircle, RefreshCw, ArrowUpDown, ArrowDown, ArrowUp, Truck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function TermosPage() {
@@ -46,6 +46,7 @@ export default function TermosPage() {
     documentNumber: '',
     devolvidos: false,
     naoDevolvidos: false,
+    distribuidor: '',
   });
 
   const [sortOrder, setSortOrder] = useState('desc'); // Padrão: mais novo para o mais antigo
@@ -81,6 +82,7 @@ export default function TermosPage() {
 
   const selectedIndustryObj = industries.find((i) => i.id === formData.industryId);
   const isDocControlIndustry = selectedIndustryObj?.controlType === 'document';
+  const isCD = selectedIndustryObj?.controlType === 'cd';
 
   // Fetch pending docs & balance when industry changes in modal
   useEffect(() => {
@@ -188,6 +190,7 @@ export default function TermosPage() {
       documentNumber: '',
       devolvidos: false,
       naoDevolvidos: false,
+      distribuidor: '',
     });
     setPendingDocs([]);
     setSelectedDocs({});
@@ -204,6 +207,10 @@ export default function TermosPage() {
     }
     if (!formData.quantity || Number(formData.quantity) <= 0) {
       addToast('A quantidade expedida deve ser maior que zero', 'warning');
+      return;
+    }
+    if (isCD && selectedIndustryObj?.distribuidores && selectedIndustryObj.distribuidores.length > 0 && !formData.distribuidor) {
+      addToast('Selecione um Distribuidor para esta indústria (CD)', 'warning');
       return;
     }
 
@@ -338,6 +345,15 @@ export default function TermosPage() {
       header: 'Qtd.',
       accessorKey: 'quantity',
       cell: (row) => <strong>{row.quantity}</strong>,
+    },
+    {
+      header: 'Distribuidor',
+      accessorKey: 'distribuidor',
+      cell: (row) => row.distribuidor ? (
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.82rem', color: 'var(--warning-600, #b45309)', fontWeight: 600 }}>
+          <Truck size={12} /> {row.distribuidor}
+        </span>
+      ) : '-',
     },
     {
       header: 'NF / Termos Devolvidos',
@@ -672,6 +688,29 @@ export default function TermosPage() {
               />
             </div>
           </div>
+
+          {/* Distribuidor (apenas para CD) */}
+          {isCD && selectedIndustryObj?.distribuidores && selectedIndustryObj.distribuidores.length > 0 && (
+            <div className="form-group animate-in">
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Truck size={16} color="var(--warning-500, #f59e0b)" />
+                Distribuidor <span className="form-required">*</span>
+              </label>
+              <select
+                className="form-select"
+                value={formData.distribuidor}
+                onChange={(e) => setFormData({ ...formData, distribuidor: e.target.value })}
+                required
+              >
+                <option value="">Selecione o Distribuidor...</option>
+                {selectedIndustryObj.distribuidores.map((dist, idx) => (
+                  <option key={idx} value={dist.name}>
+                    {dist.name}{dist.city ? ` (${dist.city})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="form-group">
             <label className="form-label">Placa do Veículo (Opcional)</label>
