@@ -5,7 +5,7 @@ import { getDocuments, createDocument, updateDocument, deleteDocument } from '@/
 import { logAuditAction } from '@/lib/audit';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { isAdmin, canDelete } from '@/lib/permissions';
+import { isAdmin, canDelete, canCreateEditCadastros } from '@/lib/permissions';
 import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -147,7 +147,7 @@ export default function ClientsPage() {
           <h1 className="page-title">Clientes</h1>
           <p className="page-subtitle">Gerencie os clientes cadastrados no sistema</p>
         </div>
-        {isAdmin(user) && (
+        {canCreateEditCadastros(user) && (
           <button className="btn btn-primary" onClick={openCreateModal}>
             <Plus size={18} /> Novo Cliente
           </button>
@@ -161,7 +161,7 @@ export default function ClientsPage() {
         loading={loading}
         actions={(row) => (
           <>
-            {isAdmin(user) && (
+            {canCreateEditCadastros(user) && (
               <button className="btn-edit" onClick={() => openEditModal(row)} title="Editar">
                 <Edit size={16} />
               </button>
