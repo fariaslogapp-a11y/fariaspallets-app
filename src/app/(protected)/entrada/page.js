@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getDocuments } from '@/lib/firestore';
-import { createMovement } from '@/lib/movements';
+import { createMovement, checkDuplicateDocument } from '@/lib/movements';
 import { logAuditAction } from '@/lib/audit';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { ArrowDownToLine, CheckCircle2, FileText } from 'lucide-react';
+import { ArrowDownToLine, CheckCircle2, FileText, AlertTriangle } from 'lucide-react';
 
 export default function EntryPage() {
   const [industries, setIndustries] = useState([]);
@@ -26,6 +26,10 @@ export default function EntryPage() {
     placa: '',
     notes: '',
   });
+
+  const [duplicateInfo, setDuplicateInfo] = useState(null);
+  const [checkingDuplicate, setCheckingDuplicate] = useState(false);
+  const debounceRef = useRef(null);
 
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -51,6 +55,36 @@ export default function EntryPage() {
 
   const selectedIndustryObj = industries.find((i) => i.id === formData.industryId);
   const isDocumentControl = selectedIndustryObj?.controlType === 'document';
+
+  // Duplicate check when documentNumber or industryId changes
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setDuplicateInfo(null);
+
+    if (!formData.industryId || !formData.documentNumber.trim()) {
+      return;
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      setCheckingDuplicate(true);
+      try {
+        const result = await checkDuplicateDocument(
+          formData.documentNumber.trim(),
+          formData.industryId,
+          'entrada'
+        );
+        setDuplicateInfo(result);
+      } catch {
+        setDuplicateInfo(null);
+      } finally {
+        setCheckingDuplicate(false);
+      }
+    }, 500);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [formData.industryId, formData.documentNumber]);
 
   const handleCategoryChange = (newCategory) => {
     setFormData((prev) => ({
@@ -89,6 +123,15 @@ export default function EntryPage() {
     // Regra de controle por Documento / Termo
     if (isDocumentControl && !formData.documentNumber.trim()) {
       addToast(`Nº da NF ou Termo é obrigatório para a indústria ${selectedIndustryObj.name}`, 'warning');
+      return;
+    }
+
+    // Bloquear se duplicata detectada
+    if (duplicateInfo && duplicateInfo.count > 0) {
+      addToast(
+        `Já existe uma entrada registrada com o Nº ${formData.documentNumber.trim()} para esta indústria. Não é possível registrar duplicata.`,
+        'error'
+      );
       return;
     }
 
@@ -309,12 +352,51 @@ export default function EntryPage() {
                   value={formData.documentNumber}
                   onChange={(e) => setFormData({ ...formData, documentNumber: e.target.value })}
                   required={isDocumentControl}
+                  style={duplicateInfo && duplicateInfo.count > 0 ? { borderColor: 'var(--danger-500)', backgroundColor: 'var(--danger-50)' } : {}}
                 />
                 <p className="form-hint">
                   {isDocumentControl
                     ? 'Esta indústria exige o número da NF ou Termo para rastreamento de devolução.'
                     : 'Referência opcional do documento.'}
                 </p>
+
+                {/* Indicador de duplicata */}
+                {checkingDuplicate && (
+                  <p className="form-hint" style={{ color: 'var(--primary-500)', fontStyle: 'italic' }}>
+                    Verificando duplicidade...
+                  </p>
+                )}
+                {!checkingDuplicate && duplicateInfo && duplicateInfo.count > 0 && (
+                  <div
+                    style={{
+                      marginTop: '10px',
+                      padding: '14px 18px',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: 'var(--danger-50, #fef2f2)',
+                      border: '1px solid var(--danger-200, #fecaca)',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px',
+                    }}
+                  >
+                    <AlertTriangle size={20} color="var(--danger-500, #ef4444)" style={{ marginTop: '2px', flexShrink: 0 }} />
+                    <div>
+                      <p style={{ margin: 0, fontWeight: 700, color: 'var(--danger-700, #b91c1c)', fontSize: '14px' }}>
+                        ⚠ Entrada já registrada!
+                      </p>
+                      <p style={{ margin: '6px 0 0', color: 'var(--danger-600, #dc2626)', fontSize: '13px', lineHeight: '1.5' }}>
+                        Já existe <strong>{duplicateInfo.count} entrada(s)</strong> registrada(s) com o Nº <strong>{formData.documentNumber.trim()}</strong> para esta indústria,
+                        totalizando <strong>{duplicateInfo.totalQuantity} pallets</strong>.
+                        {duplicateInfo.firstDate && (
+                          <> Lançado em {duplicateInfo.firstDate}{duplicateInfo.lastDate && duplicateInfo.lastDate !== duplicateInfo.firstDate ? ` até ${duplicateInfo.lastDate}` : ''}.</>
+                        )}
+                      </p>
+                      <p style={{ margin: '6px 0 0', color: 'var(--danger-600, #dc2626)', fontSize: '13px', fontWeight: 600 }}>
+                        Não é possível registrar uma entrada duplicada.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -343,7 +425,12 @@ export default function EntryPage() {
             </div>
 
             <div className="form-actions">
-              <button type="submit" className="btn btn-success btn-lg" disabled={saving}>
+              <button
+                type="submit"
+                className="btn btn-success btn-lg"
+                disabled={saving || (duplicateInfo && duplicateInfo.count > 0)}
+                style={duplicateInfo && duplicateInfo.count > 0 ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+              >
                 <CheckCircle2 size={20} />
                 {saving ? 'Registrando...' : 'Confirmar Entrada'}
               </button>

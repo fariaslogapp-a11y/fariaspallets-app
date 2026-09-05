@@ -204,6 +204,39 @@ export async function getMonthlyData() {
   }
 }
 
+// ============ Duplicate Document Check ============
+
+export async function checkDuplicateDocument(documentNumber, industryId, type = 'entrada') {
+  try {
+    const movements = await getDocuments('movements');
+    const docNum = documentNumber.trim().toLowerCase();
+
+    const duplicates = movements.filter((m) => {
+      if (m.type !== type) return false;
+      if (m.industryId !== industryId) return false;
+      if (!m.documentNumber || m.documentNumber.trim().toLowerCase() !== docNum) return false;
+      return true;
+    });
+
+    if (duplicates.length === 0) return null;
+
+    const totalQuantity = duplicates.reduce((sum, m) => sum + Number(m.quantity), 0);
+    const dates = duplicates.map((m) => m.date).filter(Boolean).sort();
+    const firstDate = dates[0] || '';
+    const lastDate = dates[dates.length - 1] || '';
+
+    return {
+      count: duplicates.length,
+      totalQuantity,
+      firstDate,
+      lastDate,
+    };
+  } catch (err) {
+    console.warn('Erro ao verificar duplicidade:', err?.message || err);
+    return null;
+  }
+}
+
 // ============ Single Document Pending Balance ============
 
 export async function getDocumentPendingBalance(documentNumber, industryId, category = 'transferencia') {
