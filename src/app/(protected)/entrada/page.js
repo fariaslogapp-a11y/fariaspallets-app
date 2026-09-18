@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { getDocuments } from '@/lib/firestore';
-import { createMovement, checkDuplicateDocument } from '@/lib/movements';
+import { createMovement, checkDuplicateDocument, getDistributorBalance } from '@/lib/movements';
 import { logAuditAction } from '@/lib/audit';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { ArrowDownToLine, CheckCircle2, FileText, AlertTriangle } from 'lucide-react';
+import { ArrowDownToLine, CheckCircle2, FileText, AlertTriangle, Truck } from 'lucide-react';
 
 export default function EntryPage() {
   const [industries, setIndustries] = useState([]);
@@ -25,7 +25,11 @@ export default function EntryPage() {
     documentNumber: '',
     placa: '',
     notes: '',
+    distribuidor: '',
   });
+
+  const [distributorBalance, setDistributorBalance] = useState(null);
+  const [checkingDistBalance, setCheckingDistBalance] = useState(false);
 
   const [duplicateInfo, setDuplicateInfo] = useState(null);
   const [checkingDuplicate, setCheckingDuplicate] = useState(false);
@@ -55,6 +59,8 @@ export default function EntryPage() {
 
   const selectedIndustryObj = industries.find((i) => i.id === formData.industryId);
   const isDocumentControl = selectedIndustryObj?.controlType === 'document';
+  const isCD = selectedIndustryObj?.controlType === 'cd';
+  const hasDistributors = isCD && selectedIndustryObj?.distribuidores && selectedIndustryObj.distribuidores.length > 0;
 
   // Duplicate check when documentNumber or industryId changes
   useEffect(() => {
@@ -86,6 +92,28 @@ export default function EntryPage() {
     };
   }, [formData.industryId, formData.documentNumber]);
 
+  // Fetch distributor balance when a distributor is selected
+  useEffect(() => {
+    async function fetchDistributorBalance() {
+      if (!formData.industryId || !formData.distribuidor) {
+        setDistributorBalance(null);
+        return;
+      }
+
+      setCheckingDistBalance(true);
+      try {
+        const bal = await getDistributorBalance(formData.industryId, formData.distribuidor);
+        setDistributorBalance(bal);
+      } catch {
+        setDistributorBalance(null);
+      } finally {
+        setCheckingDistBalance(false);
+      }
+    }
+
+    fetchDistributorBalance();
+  }, [formData.industryId, formData.distribuidor]);
+
   const handleCategoryChange = (newCategory) => {
     setFormData((prev) => ({
       ...prev,
@@ -93,7 +121,9 @@ export default function EntryPage() {
       industryId: '',
       clientId: '',
       documentNumber: '',
+      distribuidor: '',
     }));
+    setDistributorBalance(null);
   };
 
   const handleSubmit = async (e) => {
@@ -145,6 +175,7 @@ export default function EntryPage() {
         industryId: formData.industryId || null,
         clientId: formData.category === 'transferencia' ? null : (formData.clientId || null),
         documentNumber: isDocumentControl ? formData.documentNumber.trim() : (formData.documentNumber.trim() || null),
+        distribuidor: hasDistributors ? (formData.distribuidor || null) : null,
         placa: formData.placa.trim() || '',
         notes: formData.notes.trim() || '',
         createdBy: user.uid,
@@ -170,7 +201,9 @@ export default function EntryPage() {
         documentNumber: '',
         placa: '',
         notes: '',
+        distribuidor: '',
       });
+      setDistributorBalance(null);
     } catch (err) {
       console.error(err);
       addToast(err.message || 'Erro ao registrar entrada de pallets', 'error');
@@ -303,13 +336,13 @@ export default function EntryPage() {
                 <select
                   className="form-select"
                   value={formData.industryId}
-                  onChange={(e) => setFormData({ ...formData, industryId: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, industryId: e.target.value, distribuidor: '' })}
                   required={formData.category === 'transferencia'}
                 >
                   <option value="">Selecione uma Indústria...</option>
                   {industries.map((ind) => (
                     <option key={ind.id} value={ind.id}>
-                      {ind.name} {ind.controlType === 'document' ? '(Controle por NF/Termo)' : '(Por Volume)'}
+                      {ind.name} {ind.controlType === 'document' ? '(Controle por NF/Termo)' : ind.controlType === 'cd' ? '(CD)' : '(Por Volume)'}
                     </option>
                   ))}
                 </select>
@@ -337,6 +370,45 @@ export default function EntryPage() {
                 </div>
               )}
             </div>
+
+            {/* Distribuidor (Opcional para indústrias CD) */}
+            {hasDistributors && (
+              <div className="form-group animate-in">
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Truck size={16} color="var(--warning-500, #f59e0b)" />
+                  Distribuidor (Opcional)
+                </label>
+                <select
+                  className="form-select"
+                  value={formData.distribuidor}
+                  onChange={(e) => setFormData({ ...formData, distribuidor: e.target.value })}
+                >
+                  <option value="">Selecione o Distribuidor...</option>
+                  {selectedIndustryObj.distribuidores.map((dist, idx) => (
+                    <option key={idx} value={dist.name}>
+                      {dist.name}{dist.city ? ` (${dist.city})` : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="form-hint">
+                  Selecione o distribuidor para vincular esta entrada ao seu saldo. Opcional: deixe em branco para registrar como entrada geral.
+                </p>
+
+                {/* Exibir saldo do distribuidor selecionado */}
+                {formData.distribuidor && (
+                  <div style={{ marginTop: '8px', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: `1px solid ${distributorBalance !== null && distributorBalance < 0 ? 'var(--danger-300, #fca5a5)' : 'var(--success-300, #86efac)'}`, background: distributorBalance !== null && distributorBalance < 0 ? 'var(--danger-50, #fef2f2)' : 'var(--success-50, #f0fdf4)' }}>
+                    {checkingDistBalance ? (
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Verificando saldo do distribuidor...</span>
+                    ) : distributorBalance !== null ? (
+                      <span style={{ fontWeight: 600, color: distributorBalance < 0 ? 'var(--danger-600, #dc2626)' : 'var(--success-600, #16a34a)', fontSize: '0.9rem' }}>
+                        Saldo do distribuidor "{formData.distribuidor}": {distributorBalance} pallets
+                        {distributorBalance < 0 ? ' (negativo — esta entrada irá reduzir o débito)' : distributorBalance > 0 ? ' (positivo)' : ' (zerado)'}
+                      </span>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Campo de Documento / Referência se a indústria selecionada for por controle de Documento/NF */}
             {(isDocumentControl || formData.documentNumber) && (

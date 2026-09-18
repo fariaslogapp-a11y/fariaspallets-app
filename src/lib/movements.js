@@ -331,6 +331,61 @@ export async function getPendingDocuments(industryId, category = 'transferencia'
   }
 }
 
+// ============ Distributor Balances ============
+
+export async function getDistributorBalance(industryId, distribuidorName) {
+  try {
+    const movements = await getDocuments('movements');
+
+    let entradas = 0;
+    let saidas = 0;
+
+    movements.forEach((m) => {
+      if (m.industryId !== industryId) return;
+      if (m.distribuidor !== distribuidorName) return;
+
+      if (m.type === 'entrada') {
+        entradas += Number(m.quantity);
+      } else if (m.type === 'saida') {
+        saidas += Number(m.quantity);
+      }
+    });
+
+    return entradas - saidas;
+  } catch (err) {
+    console.warn('Erro ao calcular saldo do distribuidor:', err?.message || err);
+    return 0;
+  }
+}
+
+export async function getAllDistributorBalances(industryId) {
+  try {
+    const movements = await getDocuments('movements');
+    const balances = {};
+
+    movements.forEach((m) => {
+      if (m.industryId !== industryId) return;
+      if (!m.distribuidor) return;
+
+      const key = m.distribuidor;
+      if (!balances[key]) {
+        balances[key] = { distribuidor: key, entradas: 0, saidas: 0, saldo: 0 };
+      }
+
+      if (m.type === 'entrada') {
+        balances[key].entradas += Number(m.quantity);
+      } else if (m.type === 'saida') {
+        balances[key].saidas += Number(m.quantity);
+      }
+    });
+
+    return Object.values(balances).map((b) => ({ ...b, saldo: b.entradas - b.saidas }));
+  } catch (err) {
+    console.warn('Erro ao buscar saldos dos distribuidores:', err?.message || err);
+    return [];
+  }
+}
+
 // ============ Position Data ============
 
 export async function getPositionData(filters = {}) {
