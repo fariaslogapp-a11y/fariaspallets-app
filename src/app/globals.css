@@ -782,10 +782,29 @@ img {
 
 /* ============ TABLE ============ */
 .table-container {
-  overflow-x: auto;
+  overflow: hidden;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-light);
   background: var(--bg-card);
+}
+
+/* Horizontal scroll wrapper for the table (bottom scrollbar) */
+.table-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* Mirrored top scrollbar — rendered only when the table overflows horizontally */
+.table-scrollbar-top {
+  height: 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.table-scrollbar-spacer {
+  height: 1px;
 }
 
 .table-toolbar {
