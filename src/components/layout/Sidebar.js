@@ -22,6 +22,7 @@ import {
   X,
   Package,
   FileText,
+  ClipboardList,
 } from 'lucide-react';
 
 const navItems = [
@@ -30,6 +31,7 @@ const navItems = [
   { label: 'Saída de Pallets', href: '/saida', icon: ArrowUpFromLine },
   { label: 'Consultas', href: '/consultas', icon: Search },
   { label: 'Termo Pallet', href: '/termos', icon: FileText },
+  { label: 'Demonstrativos', href: '/demonstrativos', icon: ClipboardList },
 ];
 
 const cadastroItems = [
